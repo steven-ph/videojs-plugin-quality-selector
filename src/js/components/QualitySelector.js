@@ -25,7 +25,7 @@ module.exports = function(videojs) {
 
       // Update interface instantly so the user's change is acknowledged
       player.on(
-        events.QUALITY_SELECTED,
+        events.QUALITY_REQUESTED,
         function(event, newSource) {
           this.setSelectedSource(newSource);
           player.addClass(QUALITY_CHANGE_CLASS);
@@ -33,6 +33,14 @@ module.exports = function(videojs) {
           player.one('loadeddata', function() {
             player.removeClass(QUALITY_CHANGE_CLASS);
           });
+        }.bind(this)
+      );
+
+      player.on(
+        events.QUALITY_SELECTED,
+        function(event, newSource) {
+          // Update the selected source with the source that was actually selected
+          this.setSelectedSource(newSource);
         }.bind(this)
       );
 
@@ -55,15 +63,12 @@ module.exports = function(videojs) {
      * @param source {object} player source to display as selected
      */
     setSelectedSource: function(source) {
-      this.selectedSrc = source ? source.src : undefined;
-      this.update();
-    },
+      var src = source ? source.src : undefined;
 
-    orderSources: function(a, b) {
-      if (a.res && b.res) {
-        return parseFloat(a.res) - parseFloat(b.res);
+      if (this.selectedSrc !== src) {
+        this.selectedSrc = src;
+        this.update();
       }
-      return;
     },
 
     /**
@@ -71,24 +76,14 @@ module.exports = function(videojs) {
      */
     createItems: function() {
       var player = this.player(),
-        sources = player.currentSources(),
-        singleTypeSources,
-        orderedSources;
+        sources = player.currentSources();
 
-      /* filter sources by the current type on the player */
-      singleTypeSources = sources.filter(function(item) {
-        return item.type === player.currentType();
-      });
-
-      /* sort sources by res attributed if exist */
-      orderedSources = singleTypeSources.sort(this.orderSources);
-
-      if (!orderedSources || orderedSources.length < 2) {
+      if (!sources || sources.length < 2) {
         return [];
       }
 
       return _.map(
-        orderedSources,
+        sources,
         function(source) {
           return new QualityOption(player, {
             source: source,
